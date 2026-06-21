@@ -298,6 +298,135 @@ const groups: QuestionGroup[] = [
     ],
   },
   {
+    label: 'Frontend architecture',
+    title: 'State, rendering, and app structure',
+    intro:
+      'This group is for the frontend questions that go beyond definitions. These usually test whether you can structure a real application cleanly and reason about rendering behavior under complexity.',
+    questions: [
+      'How do you decide what state belongs locally, what belongs in shared app state, and what should come from the server?',
+      'What is the difference between client state and server state in a React app?',
+      'How would you structure a large frontend codebase to avoid coupling between product areas?',
+      'When would you build a custom hook versus a shared component versus a shared package?',
+      'How do you know when a component is doing too much?',
+      'What causes render waterfalls in frontend apps and how do you reduce them?',
+      'How do you think about colocating state versus lifting it up?',
+      'If multiple teams are touching the same frontend surface, how do you keep the codebase maintainable?',
+    ],
+    cover: [
+      'Show that state ownership is a design decision, not just an implementation detail.',
+      'Use your embedded ChatOps and pagination stories to talk about boundaries, data flow, and explicit ownership.',
+      'Talk about structure in terms of maintainability, blast radius, and clarity for future engineers, not just folder names.',
+      'A strong answer should sound like you understand how architecture decisions shape product velocity over time.',
+    ],
+    followUps: [
+      'What state did you deliberately refuse to centralize in your own projects?',
+      'How do you avoid creating a shared package that turns into a dumping ground?',
+      'What is one frontend architecture decision you would reverse if you saw it becoming expensive later?',
+    ],
+  },
+  {
+    label: 'Browser and runtime',
+    title: 'What the browser is doing under the hood',
+    intro:
+      'These questions test whether your JavaScript knowledge is only framework-level or whether you also understand the environment React runs inside.',
+    questions: [
+      'Explain the event loop in the browser.',
+      'What is the difference between macro tasks and microtasks, and when does it matter?',
+      'How do closures actually work, and why do they create bugs in UI code?',
+      'What causes memory leaks in frontend apps?',
+      'What is the browser doing during layout, paint, and composite, and why does that matter for UI performance?',
+      'What is the difference between localStorage, sessionStorage, cookies, and in-memory state?',
+      'What is CORS, and when does it become a frontend concern?',
+      'How do WebSockets differ from normal request-response behavior from the frontend perspective?',
+    ],
+    cover: [
+      'Keep answers practical and tied to bugs you could actually encounter in real UI work.',
+      'Use examples from realtime integration, stale state, cleanup, event handling, and session boundary decisions where possible.',
+      'Do not over-theorize. The interviewer wants to know if browser behavior affects how you design and debug UI systems.',
+    ],
+    followUps: [
+      'What is one bug you have seen that only makes sense if you understand event timing well?',
+      'How would you explain a memory leak to a less experienced frontend engineer?',
+      'Where did browser behavior matter in your widget or realtime work?',
+    ],
+  },
+  {
+    label: 'Frontend performance',
+    title: 'Rendering, bundle size, and interaction speed',
+    intro:
+      'Axon explicitly mentions a high bar for quality and performance. This group tests whether you can reason about frontend performance as a product problem, not just a Lighthouse score.',
+    questions: [
+      'How do you investigate a slow React screen?',
+      'How do you know whether a performance problem is render-bound, network-bound, or state-management-related?',
+      'When would you split code, lazy-load, or defer work?',
+      'What frontend metrics matter most to you for a user-facing app?',
+      'How do you think about performance in data-heavy interfaces?',
+      'What can make a table or list feel slow even if the API is fast?',
+      'How do you approach performance tuning without over-optimizing too early?',
+      'Tell me about a frontend performance improvement you are proud of beyond build time.',
+    ],
+    cover: [
+      'Start from user impact: slow interactions, delayed feedback, janky rendering, heavy lists, or expensive rerenders.',
+      'Show a method: reproduce, measure, isolate, change one thing, verify impact.',
+      'Use cursor pagination, render boundaries, data-heavy UI, and host-embedded coordination as material when relevant.',
+      'A strong answer sounds like disciplined diagnosis, not random micro-optimizations.',
+    ],
+    followUps: [
+      'What if improving performance makes the architecture uglier?',
+      'When would you choose readability over a small performance gain?',
+      'What metrics would convince you a performance fix was worth keeping?',
+    ],
+  },
+  {
+    label: 'Frontend testing',
+    title: 'Testing product behavior, not just components',
+    intro:
+      'Testing questions often separate people who have shipped real UI from people who mainly know framework APIs. You do not need a perfect testing philosophy, but you do need a clear one.',
+    questions: [
+      'How do you decide what to test in a frontend feature?',
+      'What should be covered by unit tests versus integration tests versus E2E tests?',
+      'How would you test an embedded integration boundary like ChatOps in practice?',
+      'How do you test route-driven or URL-param-driven behavior?',
+      'How do you avoid brittle frontend tests?',
+      'What makes a frontend test suite valuable instead of noisy?',
+      'When is mocking helping, and when is it hiding reality?',
+    ],
+    cover: [
+      'Talk about behavior, contracts, and risk rather than only test tools.',
+      'Use the embedded boundary, route behavior, permissions, and state transitions as concrete examples.',
+      'A strong answer should show you understand that frontend tests should protect user workflows and integration assumptions, not just implementation details.',
+    ],
+    followUps: [
+      'How would you test that shared search params do not break an embedded surface?',
+      'What kind of bug is easiest to miss if you only write unit tests?',
+      'What is one test you wish you had earlier in one of your projects?',
+    ],
+  },
+  {
+    label: 'Frontend usability',
+    title: 'Accessibility, UX correctness, and resilient interfaces',
+    intro:
+      'Not every interviewer will ask these directly, but strong frontend engineers usually have opinions here. These questions are especially useful if Axon wants product-minded engineers rather than pure feature implementers.',
+    questions: [
+      'What does accessibility mean to you in a frontend product?',
+      'How do you think about loading, empty, and error states?',
+      'What makes a UI feel reliable to users during async operations?',
+      'How do you design a frontend feature so errors fail safely instead of confusing the user?',
+      'What are common accessibility issues in complex UIs like tables, dashboards, or widgets?',
+      'How do you keep product polish from getting lost in engineering-driven projects?',
+    ],
+    cover: [
+      'Show that good frontend work includes clarity, fallback behavior, and accessibility, not just correct rendering.',
+      'Use practical examples: pagination flows, embedded dashboards, realtime surfaces, and internal portals with dense data.',
+      'A good answer here sounds like empathy plus engineering discipline.',
+    ],
+    followUps: [
+      'What accessibility problem are frontend engineers most likely to miss?',
+      'How would you handle partial failure in a feature with multiple async dependencies?',
+      'How do you keep operational tools usable even when they are data-dense?',
+    ],
+  },
+  {
     label: 'Architecture and system thinking',
     title: 'Small system design prompts for a frontend engineer',
     intro:

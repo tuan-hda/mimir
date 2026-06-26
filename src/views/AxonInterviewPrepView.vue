@@ -1,506 +1,229 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+
+import InterviewPrepSection from '../components/axon-prep/InterviewPrepSection.vue'
+import questionBankMarkdown from '../content/axonInterviewQuestionBank.md?raw'
+
+type QuestionItem = {
+  id: string
+  number: number
+  prompt: string
+  answerLines: string[]
+}
+
+type PrepSection = {
+  id: string
+  number: number
+  title: string
+  introLines: string[]
+  questions: QuestionItem[]
+  notes: string[]
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+function cleanLine(value: string) {
+  return value
+    .replace(/^\s+-\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function parseQuestionBank(markdown: string) {
+  const lines = markdown.split('\n')
+  const title =
+    lines.find((line) => line.startsWith('# '))?.replace(/^#\s+/, '') ?? 'Axon Interview Prep'
+  const overviewLines: string[] = []
+  const sections: PrepSection[] = []
+  let currentSection: PrepSection | null = null
+  let currentQuestion: QuestionItem | null = null
+  let beforeSections = true
+
+  for (const line of lines.slice(1)) {
+    const sectionMatch = line.match(/^##\s+(\d+)\.\s+(.+)$/)
+    const questionMatch = line.match(/^(\d+)\.\s+(.+)$/)
+    const trimmed = line.trim()
+
+    if (sectionMatch) {
+      const number = Number(sectionMatch[1] ?? 0)
+      const titleText = (sectionMatch[2] ?? '').trim()
+
+      currentSection = {
+        id: `${number}-${slugify(titleText)}`,
+        number,
+        title: titleText,
+        introLines: [],
+        questions: [],
+        notes: [],
+      }
+      sections.push(currentSection)
+      currentQuestion = null
+      beforeSections = false
+      continue
+    }
+
+    if (beforeSections) {
+      if (trimmed.length > 0) {
+        overviewLines.push(cleanLine(line))
+      }
+      continue
+    }
+
+    if (!currentSection || trimmed.length === 0) {
+      continue
+    }
+
+    if (questionMatch) {
+      const number = Number(questionMatch[1] ?? 0)
+      currentQuestion = {
+        id: `q-${number}`,
+        number,
+        prompt: (questionMatch[2] ?? '').trim(),
+        answerLines: [],
+      }
+      currentSection.questions.push(currentQuestion)
+      continue
+    }
+
+    if (currentQuestion) {
+      currentQuestion.answerLines.push(cleanLine(line))
+      continue
+    }
+
+    if (trimmed.length > 0) {
+      currentSection.notes.push(cleanLine(line))
+    }
+  }
+
+  return {
+    title,
+    overviewLines,
+    sections,
+  }
+}
+
+const questionBank = parseQuestionBank(questionBankMarkdown)
+
+const totalQuestions = computed(() =>
+  questionBank.sections.reduce((total, section) => total + section.questions.length, 0),
+)
+
+const totalAnswers = computed(() =>
+  questionBank.sections.reduce(
+    (total, section) =>
+      total + section.questions.filter((question) => question.answerLines.length > 0).length,
+    0,
+  ),
+)
+
+const technicalSections = computed(
+  () =>
+    questionBank.sections.filter((section) =>
+      /fundamentals|security|javascript|typescript|react|performance|dsa|coding|system|testing/i.test(
+        section.title,
+      ),
+    ).length,
+)
+</script>
+
 <template>
   <div class="min-h-[100dvh] bg-[var(--color-bg)] text-[var(--color-ink)]">
     <div class="pointer-events-none fixed inset-0 overflow-hidden">
       <div class="grain-layer absolute inset-0 opacity-20" />
     </div>
 
-    <main class="relative mx-auto flex w-full max-w-[1180px] flex-col px-4 pb-14 pt-5 sm:px-6 sm:pt-6 lg:px-8">
-      <section
-        class="rounded-[1.4rem] border border-black/14 bg-[rgba(255,255,255,0.74)] px-6 py-7 shadow-[0_14px_38px_rgba(23,19,15,0.06)] sm:px-8 sm:py-8"
-      >
-        <div
-          class="inline-flex items-center gap-2 rounded-full border border-[color:rgba(127,89,51,0.18)] bg-[rgba(127,89,51,0.1)] px-3 py-1.5 text-[0.72rem] font-medium uppercase tracking-[0.22em] text-[var(--color-accent)]"
-        >
+    <main
+      class="relative mx-auto flex w-full max-w-[1360px] flex-col px-4 pb-14 pt-5 sm:px-6 sm:pt-6 lg:px-8"
+    >
+      <header class="border-b border-black/12 pb-8">
+        <p class="text-[0.72rem] uppercase tracking-[0.24em] text-[var(--color-muted)]">
           Axon interview prep
-        </div>
-        <div class="mt-5 grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+        </p>
+
+        <div
+          class="mt-6 grid gap-8 lg:grid-cols-[minmax(0,0.98fr)_minmax(360px,0.62fr)] lg:items-end"
+        >
           <div>
             <h1
-              class="font-serif-display max-w-[12ch] text-4xl font-medium tracking-[-0.06em] sm:text-5xl lg:text-[4.25rem]"
+              class="font-serif-display max-w-[13ch] text-4xl font-medium sm:text-5xl lg:text-[4.4rem]"
             >
-              Every question worth preparing for.
+              {{ questionBank.title }}
             </h1>
-            <p class="mt-4 max-w-[60ch] text-sm leading-7 text-[var(--color-muted)] sm:text-base">
-              Built from your final CV and the Axon Frontend Software Engineer I job post. This page is no longer a
-              7-day plan. It is a full question bank: likely round-one questions, deep-dive follow-ups, sharp
-              technical questions, and harder prompts that test whether your experience really holds up.
+            <div class="mt-5 grid gap-2 text-sm leading-7 text-[var(--color-muted)] sm:text-base">
+              <p v-for="line in questionBank.overviewLines" :key="line">
+                {{ line }}
+              </p>
+            </div>
+          </div>
+
+          <aside
+            class="grid gap-3 rounded-[1.2rem] border border-black/14 bg-[rgba(255,255,255,0.68)] p-4"
+          >
+            <div class="grid grid-cols-3 gap-2">
+              <div class="border-r border-black/10 pr-3">
+                <p class="font-serif-display text-3xl font-medium">{{ totalQuestions }}</p>
+                <p class="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                  Questions
+                </p>
+              </div>
+              <div class="border-r border-black/10 pr-3">
+                <p class="font-serif-display text-3xl font-medium">{{ totalAnswers }}</p>
+                <p class="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                  Answers
+                </p>
+              </div>
+              <div>
+                <p class="font-serif-display text-3xl font-medium">{{ technicalSections }}</p>
+                <p class="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                  Tech areas
+                </p>
+              </div>
+            </div>
+
+            <p class="border-t border-black/10 pt-3 text-sm leading-6 text-[var(--color-muted)]">
+              Full imported study bank from the Axon JD and your CV. Use the section rail to jump
+              between behavioral, fundamentals, auth, DSA, frontend, coding, system design, and
+              closing questions.
             </p>
-          </div>
-          <div class="grid gap-3">
-            <div class="rounded-[1rem] border border-black/12 bg-[rgba(251,248,242,0.9)] px-4 py-4">
-              <p class="text-[0.72rem] uppercase tracking-[0.18em] text-[var(--color-accent)]">Signals from the JD</p>
-              <p class="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-                React, JavaScript fundamentals, code quality, performance, end-to-end features, architecture meetings,
-                collaboration, mentoring, and clear English communication.
-              </p>
-            </div>
-            <div class="rounded-[1rem] border border-black/12 bg-[rgba(251,248,242,0.9)] px-4 py-4">
-              <p class="text-[0.72rem] uppercase tracking-[0.18em] text-[var(--color-accent)]">Strongest anchors from your CV</p>
-              <p class="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-                ChatOps and widget integration, lexi-session boundary design, cursor pagination migration, tracing and
-                SRE bot impact, build-time improvement, and Bosch platform/API ownership.
-              </p>
-            </div>
-          </div>
+          </aside>
         </div>
-      </section>
+      </header>
 
-      <section class="mt-6 grid gap-4">
-        <article
-          v-for="group in groups"
-          :key="group.title"
-          class="rounded-[1.3rem] border border-black/14 bg-[rgba(255,255,255,0.74)] shadow-[0_10px_28px_rgba(23,19,15,0.05)]"
-        >
-          <div class="border-b border-black/10 bg-[rgba(251,248,242,0.95)] px-6 py-5">
-            <p class="text-[0.72rem] uppercase tracking-[0.18em] text-[var(--color-muted)]">
-              {{ group.label }}
+      <div class="grid gap-7 pt-7 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <nav class="lg:sticky lg:top-24 lg:self-start">
+          <div class="rounded-[1rem] border border-black/14 bg-[rgba(255,255,255,0.72)] p-3">
+            <p class="px-2 pb-2 text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
+              Sections
             </p>
-            <h2 class="font-serif-display mt-2 text-[1.7rem] font-medium tracking-[-0.04em]">
-              {{ group.title }}
-            </h2>
-            <p class="mt-3 max-w-[70ch] text-sm leading-6 text-[var(--color-muted)]">
-              {{ group.intro }}
-            </p>
-          </div>
-
-          <div class="grid gap-4 px-6 py-5 lg:grid-cols-[1.05fr_0.95fr]">
-            <div class="rounded-[1rem] border border-black/10 bg-white px-4 py-4">
-              <p class="text-[0.72rem] uppercase tracking-[0.18em] text-[var(--color-accent)]">Questions to practice</p>
-              <ul class="mt-3 space-y-2 pl-5 text-sm leading-6 text-[var(--color-muted)]">
-                <li v-for="question in group.questions" :key="question">{{ question }}</li>
-              </ul>
-            </div>
-
-            <div class="space-y-4">
-              <div class="rounded-[1rem] border border-black/10 bg-white px-4 py-4">
-                <p class="text-[0.72rem] uppercase tracking-[0.18em] text-[var(--color-accent)]">What a strong answer should cover</p>
-                <ul class="mt-3 space-y-2 pl-5 text-sm leading-6 text-[var(--color-muted)]">
-                  <li v-for="point in group.cover" :key="point">{{ point }}</li>
-                </ul>
-              </div>
-
-              <div
-                v-if="group.followUps.length"
-                class="rounded-[1rem] border border-black/10 bg-[rgba(127,89,51,0.06)] px-4 py-4"
+            <div class="max-h-[calc(100dvh-9rem)] space-y-1 overflow-auto pr-1">
+              <a
+                v-for="section in questionBank.sections"
+                :key="section.id"
+                :href="`#${section.id}`"
+                class="block rounded-[0.75rem] px-3 py-2 text-sm leading-5 text-[var(--color-muted)] transition duration-200 hover:bg-black/[0.04] hover:text-[var(--color-ink)]"
               >
-                <p class="text-[0.72rem] uppercase tracking-[0.18em] text-[var(--color-accent)]">Hard follow-ups</p>
-                <ul class="mt-3 space-y-2 pl-5 text-sm leading-6 text-[var(--color-muted)]">
-                  <li v-for="followUp in group.followUps" :key="followUp">{{ followUp }}</li>
-                </ul>
-              </div>
+                <span class="text-[0.72rem] uppercase tracking-[0.16em] text-[var(--color-accent)]">
+                  {{ String(section.number).padStart(2, '0') }}
+                </span>
+                <span class="mt-1 block">{{ section.title }}</span>
+              </a>
             </div>
           </div>
-        </article>
-      </section>
+        </nav>
+
+        <div class="grid min-w-0 gap-5">
+          <InterviewPrepSection
+            v-for="section in questionBank.sections"
+            :key="section.id"
+            :section="section"
+          />
+        </div>
+      </div>
     </main>
   </div>
 </template>
-
-<script setup lang="ts">
-type QuestionGroup = {
-  label: string
-  title: string
-  intro: string
-  questions: string[]
-  cover: string[]
-  followUps: string[]
-}
-
-const groups: QuestionGroup[] = [
-  {
-    label: 'Behavioral core',
-    title: 'How you introduce and position yourself',
-    intro:
-      'These are the questions that shape the rest of the interview. If you answer them well, the interviewer starts looking for evidence that confirms a strong impression instead of looking for reasons to doubt you.',
-    questions: [
-      'Introduce yourself.',
-      'Walk me through your recent experience.',
-      'Why are you interested in Axon?',
-      'What is your strongest point that distinguishes you from other candidates?',
-      'What is an achievement you are most proud of that proves your strongest point?',
-      'What have you learned most from your past projects?',
-      'What kind of work do you want to do next?',
-    ],
-    cover: [
-      'Position yourself quickly as a frontend engineer with real production ownership, not as a generalist who happens to know some frontend.',
-      'Name your strongest signals early: React and TypeScript product work, architecture-minded thinking, debugging and observability, and cross-team delivery.',
-      'When asked about your strongest point, anchor it in one or two real stories instead of adjectives.',
-      'Keep Why Axon grounded in the role itself: ownership, product impact, quality bar, and engineering collaboration.',
-    ],
-    followUps: [
-      'Why are you a better fit for this role than someone with deeper pure frontend specialization?',
-      'Your CV touches many systems. What exactly do you want the interviewer to remember about you?',
-      'What part of your experience best transfers to public-safety or mission-driven product work?',
-    ],
-  },
-  {
-    label: 'Cake flagship story',
-    title: 'ChatOps, widget, and embedded integration',
-    intro:
-      'This is likely your highest-upside experience because it combines frontend integration complexity, product concerns, and architectural tradeoffs. You should assume the interviewer may spend a long time here.',
-    questions: [
-      'Tell me about the ChatOps integration project.',
-      'What made that project technically difficult from a frontend perspective?',
-      'Why Web Components?',
-      'Why not iframe?',
-      'Could this have been a normal shared component instead?',
-      'How did you structure the integration so host concerns stayed clear?',
-      'How did you handle state ownership and rerender boundaries?',
-      'How did you handle shared router concerns and URL search params?',
-      'How did you test the boundary between the host app and the embedded dashboard?',
-      'What were the hardest tradeoffs in that integration?',
-    ],
-    cover: [
-      'Explain the product problem before the architecture. The interviewer should understand why this feature existed and why the integration had to feel native.',
-      'Be explicit that the host owned auth, transport, permissions, tenant context, routing ownership, and shared product concerns.',
-      'The embedded dashboard owned feature-specific UI behavior and local workflow state.',
-      'Web Components were the interoperability boundary between a React host and a Vue feature surface, without pretending the embedded feature was just a lightweight reusable component.',
-      'Routing remained host-owned, and route-related information crossed the boundary in a controlled, scoped way instead of letting both sides freely mutate shared URL state.',
-    ],
-    followUps: [
-      'What would have gone wrong if both the host and embedded app treated the URL as fully theirs?',
-      'If the host changed auth or permission behavior, how would you keep the embedded dashboard from drifting out of sync?',
-      'What made this integration maintainable over time instead of becoming a hidden second app inside the host?',
-    ],
-  },
-  {
-    label: 'Performance and frontend architecture',
-    title: 'Cursor pagination, state, and scalability',
-    intro:
-      'This is one of the cleanest stories on your CV for showing product reasoning, backend alignment, and frontend state design. It maps well to Axon’s quality and performance signals.',
-    questions: [
-      'Tell me about the cursor pagination migration.',
-      'Why was offset-based pagination not good enough?',
-      'What changed in the frontend when moving from offset to cursor pagination?',
-      'How did you align the design with backend engineers?',
-      'What tradeoffs did cursor pagination introduce for the UI?',
-      'How did URL state and browser navigation behavior change?',
-      'How did you know the migration improved performance or scalability?',
-      'If you had to design that table flow from scratch again, what would you do differently?',
-    ],
-    cover: [
-      'Start with the user and data problem: larger datasets, consistency, scalability, or response-time concerns, not just a technical preference.',
-      'Explain the frontend implications clearly: state shape, page transition assumptions, cursor history, URL behavior, and edge cases.',
-      'Show that this was not a solo frontend change but a cross-team contract discussion with backend.',
-      'Land on the result in product terms and engineering terms: better response time, more scalable retrieval pattern, safer long-term direction.',
-    ],
-    followUps: [
-      'What did cursor pagination make harder for the frontend compared with page-number-based navigation?',
-      'How would you support back/forward navigation or deep-linking cleanly in a cursor-based flow?',
-      'If users demanded “jump to page 20,” how would you think about that tradeoff?',
-    ],
-  },
-  {
-    label: 'Debugging and production leverage',
-    title: 'Tracing, shared instrumentation, and faster incident response',
-    intro:
-      'This story is strong because it shows platform leverage beyond one app. It is not only about setup. It is about making debugging materially easier and reducing triage time.',
-    questions: [
-      'Tell me about the tracing and instrumentation work.',
-      'What debugging pain existed before you changed anything?',
-      'What exactly did you contribute to the shared instrumentation effort?',
-      'How did trace IDs become useful in practice rather than just present in logs?',
-      'How did this support the SRE bot workflow?',
-      'How do you know incident triage actually got better?',
-      'How would you explain the value of observability to a product-focused stakeholder?',
-      'What was hard about making shared instrumentation work across multiple portals?',
-    ],
-    cover: [
-      'Start with the original problem: fragmented debugging, poor traceability, too much investigation noise, or slow incident triage.',
-      'Be specific about your contribution: shared instrumentation, propagation conventions, surfacing trace context, shared package behavior, debugging ergonomics.',
-      'Tie the SRE bot point to a real workflow improvement, not just a cool side feature.',
-      'Make sure the answer lands on impact: faster incident triage, lower debugging overhead, better cross-team operational visibility.',
-    ],
-    followUps: [
-      'What part of this work was actually frontend engineering versus platform support work?',
-      'How would you keep instrumentation from becoming noisy or expensive over time?',
-      'If a team resisted adopting the shared pattern, how would you persuade them?',
-    ],
-  },
-  {
-    label: 'Quality and engineering maturity',
-    title: 'Shared packages, reliability work, and development workflow',
-    intro:
-      'These questions test whether you improve engineering systems, not just feature throughput. They also give you room to talk about AI use in a grounded way.',
-    questions: [
-      'How do you keep code quality high?',
-      'Tell me about a reliability issue you fixed in shared code or shared packages.',
-      'How do you think about reusability versus over-abstraction?',
-      'When should a team create a shared package, and when should it not?',
-      'How do you review risky frontend changes?',
-      'Do you use AI in your work process? To what extent?',
-      'How have Claude or Codex changed your workflow, if at all?',
-    ],
-    cover: [
-      'Use shared core package maintenance to show reliability and compatibility thinking across multiple consuming teams.',
-      'Talk about reusability as a tradeoff, not a virtue by default. Shared code should reduce real complexity, not create premature abstraction.',
-      'For AI, stay practical: implementation speed, faster iteration, review support, documentation help, but accountability still stays with you.',
-      'A strong answer here sounds like judgment, not just process slogans.',
-    ],
-    followUps: [
-      'How do you avoid AI making you faster but sloppier?',
-      'How do you know a shared abstraction is helping instead of creating invisible coupling?',
-      'Tell me about a time shared code made something worse before it got better.',
-    ],
-  },
-  {
-    label: 'Bosch depth',
-    title: 'Platform work, APIs, and cross-layer ownership',
-    intro:
-      'Bosch gives you range. If overused, it can sound broad and slightly dated. If told well, it proves you can work across product surfaces, services, deployment, and operations with real ownership.',
-    questions: [
-      'Tell me about the most technically challenging thing you built at Bosch.',
-      'What was AutoWRX, and why did it matter?',
-      'How did you approach Version 2 feature delivery across frontend, backend, and deployment layers?',
-      'What was painful about the monolithic API, and what did decoupling improve?',
-      'How did centralized auth and routing help?',
-      'How did your CI/CD or environment work change the team’s day-to-day experience?',
-      'What did Bosch teach you that made you better at your later Cake work?',
-    ],
-    cover: [
-      'Explain the product and user first so the architecture has context.',
-      'Tell one coherent system story, not five unrelated bullet points.',
-      'Use Bosch to show breadth and ownership, but keep the framing tied to frontend product and engineering decisions.',
-      'The best end point is that Bosch trained your cross-layer judgment and made you stronger in later frontend platform work.',
-    ],
-    followUps: [
-      'What was the hardest maintainability tradeoff you made there?',
-      'If you had stayed longer, what would you have redesigned next?',
-      'Where did frontend concerns stop and platform concerns begin in that role?',
-    ],
-  },
-  {
-    label: 'Frontend fundamentals',
-    title: 'React, JavaScript, and browser depth',
-    intro:
-      'The JD explicitly asks for React and JavaScript proficiency plus good computer science background. Even if the interviewer starts with your experience, you should expect some fundamentals checks.',
-    questions: [
-      'What happens in React when state changes?',
-      'What causes unnecessary rerenders, and how do you reduce them?',
-      'When would you use useMemo or useCallback, and when would you avoid them?',
-      'What problems can stale closures cause in React?',
-      'How does useEffect cleanup work?',
-      'Controlled vs uncontrolled inputs: when would you choose each?',
-      'Explain debouncing and throttling. When would you use each?',
-      'Explain the JavaScript event loop at a practical level.',
-      'What are closures, and where do they commonly cause bugs in frontend code?',
-      'How would you explain the difference between client state and server state?',
-    ],
-    cover: [
-      'Keep answers practical. The interviewer is not looking for textbook recitation alone; they want to hear that you can apply the concept to real product work.',
-      'Whenever possible, connect a concept back to one of your stories: rerenders in embedded integration, state shape in pagination, cleanup in realtime behavior.',
-      'If you are unsure on a detail, stay structured instead of hand-wavy.',
-    ],
-    followUps: [
-      'What is an example from your work where state ownership was more important than optimization?',
-      'When has memoization hurt readability more than it helped performance?',
-      'How would you debug a stale-state bug that only appears after navigation?',
-    ],
-  },
-  {
-    label: 'Frontend architecture',
-    title: 'State, rendering, and app structure',
-    intro:
-      'This group is for the frontend questions that go beyond definitions. These usually test whether you can structure a real application cleanly and reason about rendering behavior under complexity.',
-    questions: [
-      'How do you decide what state belongs locally, what belongs in shared app state, and what should come from the server?',
-      'What is the difference between client state and server state in a React app?',
-      'How would you structure a large frontend codebase to avoid coupling between product areas?',
-      'When would you build a custom hook versus a shared component versus a shared package?',
-      'How do you know when a component is doing too much?',
-      'What causes render waterfalls in frontend apps and how do you reduce them?',
-      'How do you think about colocating state versus lifting it up?',
-      'If multiple teams are touching the same frontend surface, how do you keep the codebase maintainable?',
-    ],
-    cover: [
-      'Show that state ownership is a design decision, not just an implementation detail.',
-      'Use your embedded ChatOps and pagination stories to talk about boundaries, data flow, and explicit ownership.',
-      'Talk about structure in terms of maintainability, blast radius, and clarity for future engineers, not just folder names.',
-      'A strong answer should sound like you understand how architecture decisions shape product velocity over time.',
-    ],
-    followUps: [
-      'What state did you deliberately refuse to centralize in your own projects?',
-      'How do you avoid creating a shared package that turns into a dumping ground?',
-      'What is one frontend architecture decision you would reverse if you saw it becoming expensive later?',
-    ],
-  },
-  {
-    label: 'Browser and runtime',
-    title: 'What the browser is doing under the hood',
-    intro:
-      'These questions test whether your JavaScript knowledge is only framework-level or whether you also understand the environment React runs inside.',
-    questions: [
-      'Explain the event loop in the browser.',
-      'What is the difference between macro tasks and microtasks, and when does it matter?',
-      'How do closures actually work, and why do they create bugs in UI code?',
-      'What causes memory leaks in frontend apps?',
-      'What is the browser doing during layout, paint, and composite, and why does that matter for UI performance?',
-      'What is the difference between localStorage, sessionStorage, cookies, and in-memory state?',
-      'What is CORS, and when does it become a frontend concern?',
-      'How do WebSockets differ from normal request-response behavior from the frontend perspective?',
-    ],
-    cover: [
-      'Keep answers practical and tied to bugs you could actually encounter in real UI work.',
-      'Use examples from realtime integration, stale state, cleanup, event handling, and session boundary decisions where possible.',
-      'Do not over-theorize. The interviewer wants to know if browser behavior affects how you design and debug UI systems.',
-    ],
-    followUps: [
-      'What is one bug you have seen that only makes sense if you understand event timing well?',
-      'How would you explain a memory leak to a less experienced frontend engineer?',
-      'Where did browser behavior matter in your widget or realtime work?',
-    ],
-  },
-  {
-    label: 'Frontend performance',
-    title: 'Rendering, bundle size, and interaction speed',
-    intro:
-      'Axon explicitly mentions a high bar for quality and performance. This group tests whether you can reason about frontend performance as a product problem, not just a Lighthouse score.',
-    questions: [
-      'How do you investigate a slow React screen?',
-      'How do you know whether a performance problem is render-bound, network-bound, or state-management-related?',
-      'When would you split code, lazy-load, or defer work?',
-      'What frontend metrics matter most to you for a user-facing app?',
-      'How do you think about performance in data-heavy interfaces?',
-      'What can make a table or list feel slow even if the API is fast?',
-      'How do you approach performance tuning without over-optimizing too early?',
-      'Tell me about a frontend performance improvement you are proud of beyond build time.',
-    ],
-    cover: [
-      'Start from user impact: slow interactions, delayed feedback, janky rendering, heavy lists, or expensive rerenders.',
-      'Show a method: reproduce, measure, isolate, change one thing, verify impact.',
-      'Use cursor pagination, render boundaries, data-heavy UI, and host-embedded coordination as material when relevant.',
-      'A strong answer sounds like disciplined diagnosis, not random micro-optimizations.',
-    ],
-    followUps: [
-      'What if improving performance makes the architecture uglier?',
-      'When would you choose readability over a small performance gain?',
-      'What metrics would convince you a performance fix was worth keeping?',
-    ],
-  },
-  {
-    label: 'Frontend testing',
-    title: 'Testing product behavior, not just components',
-    intro:
-      'Testing questions often separate people who have shipped real UI from people who mainly know framework APIs. You do not need a perfect testing philosophy, but you do need a clear one.',
-    questions: [
-      'How do you decide what to test in a frontend feature?',
-      'What should be covered by unit tests versus integration tests versus E2E tests?',
-      'How would you test an embedded integration boundary like ChatOps in practice?',
-      'How do you test route-driven or URL-param-driven behavior?',
-      'How do you avoid brittle frontend tests?',
-      'What makes a frontend test suite valuable instead of noisy?',
-      'When is mocking helping, and when is it hiding reality?',
-    ],
-    cover: [
-      'Talk about behavior, contracts, and risk rather than only test tools.',
-      'Use the embedded boundary, route behavior, permissions, and state transitions as concrete examples.',
-      'A strong answer should show you understand that frontend tests should protect user workflows and integration assumptions, not just implementation details.',
-    ],
-    followUps: [
-      'How would you test that shared search params do not break an embedded surface?',
-      'What kind of bug is easiest to miss if you only write unit tests?',
-      'What is one test you wish you had earlier in one of your projects?',
-    ],
-  },
-  {
-    label: 'Frontend usability',
-    title: 'Accessibility, UX correctness, and resilient interfaces',
-    intro:
-      'Not every interviewer will ask these directly, but strong frontend engineers usually have opinions here. These questions are especially useful if Axon wants product-minded engineers rather than pure feature implementers.',
-    questions: [
-      'What does accessibility mean to you in a frontend product?',
-      'How do you think about loading, empty, and error states?',
-      'What makes a UI feel reliable to users during async operations?',
-      'How do you design a frontend feature so errors fail safely instead of confusing the user?',
-      'What are common accessibility issues in complex UIs like tables, dashboards, or widgets?',
-      'How do you keep product polish from getting lost in engineering-driven projects?',
-    ],
-    cover: [
-      'Show that good frontend work includes clarity, fallback behavior, and accessibility, not just correct rendering.',
-      'Use practical examples: pagination flows, embedded dashboards, realtime surfaces, and internal portals with dense data.',
-      'A good answer here sounds like empathy plus engineering discipline.',
-    ],
-    followUps: [
-      'What accessibility problem are frontend engineers most likely to miss?',
-      'How would you handle partial failure in a feature with multiple async dependencies?',
-      'How do you keep operational tools usable even when they are data-dense?',
-    ],
-  },
-  {
-    label: 'Architecture and system thinking',
-    title: 'Small system design prompts for a frontend engineer',
-    intro:
-      'Axon mentions architecture meetings and end-to-end features. That usually means you should be ready for design discussion, even if it is not a full formal system design round.',
-    questions: [
-      'Design a chat widget that works across multiple websites.',
-      'Design a scalable internal data table for large datasets.',
-      'How would you design a reusable frontend surface that can live inside multiple host apps?',
-      'How would you structure a frontend app so product features can move fast without turning the codebase chaotic?',
-      'How would you introduce observability into a frontend-heavy product surface?',
-      'How would you roll out a risky frontend change safely?',
-    ],
-    cover: [
-      'Talk through requirements, ownership boundaries, state model, edge cases, failure handling, observability, rollout, and testing.',
-      'Do not jump straight into tools. Start with responsibilities and constraints.',
-      'The strongest answers will sound like product-aware architecture, not abstract system design theater.',
-    ],
-    followUps: [
-      'What would you measure after launch?',
-      'How would you keep the design maintainable as more teams touched it?',
-      'Where would you deliberately keep things simple instead of making them more generic?',
-    ],
-  },
-  {
-    label: 'Coding and harder screens',
-    title: 'Questions that may appear if the interviewer wants more rigor',
-    intro:
-      'The JD mentions computer science background and programming fundamentals. Even for a frontend role, some companies use coding or CS questions to test baseline rigor. Your backend question bank is a useful warning sign here.',
-    questions: [
-      'Implement a simple rate limiter: N requests per user per T seconds.',
-      'Given an array of integers, find the subarray with the largest sum. If there are many answers, choose the one with the smallest starting index, then the shortest one.',
-      'Explain B-tree indexes at a high level and why they are often used.',
-      'What does ACID mean?',
-      'What are database isolation levels, at a practical level?',
-      'Process vs thread: what is the practical difference?',
-      'What is virtual memory, and why does it matter?',
-      'What is a hash function and why is it used?',
-      'What is JWT, and what problems does it solve or create?',
-    ],
-    cover: [
-      'Do not assume these will appear, but do not be surprised if one or two do.',
-      'For CS questions, practical clarity beats overreaching. You want to sound solid, not encyclopedic.',
-      'For coding, be ready to speak while solving: clarify assumptions, outline approach, discuss complexity, then implement.',
-    ],
-    followUps: [
-      'What if the rate limiter must work across multiple servers?',
-      'Why would TCP or TLS details matter to a frontend or full-stack-minded engineer?',
-      'How much backend or systems depth should a frontend engineer actually have?',
-    ],
-  },
-  {
-    label: 'Pressure questions',
-    title: 'Behavioral prompts that can expose weak spots',
-    intro:
-      'These are the questions that usually feel uncomfortable because they test self-awareness, conflict handling, and maturity rather than polished project summaries.',
-    questions: [
-      'Tell me about a disagreement with backend, product, or another engineer.',
-      'Tell me about a time you wanted more autonomy or clearer ownership.',
-      'Tell me about a time your first technical idea was wrong.',
-      'What part of your current experience is not yet at the level you want?',
-      'What would a skeptical interviewer worry about when looking at your CV?',
-      'What do you do when requirements are unclear but you still need to move forward?',
-      'What kind of feedback have you received repeatedly in your career?',
-    ],
-    cover: [
-      'Choose stories that show judgment, not resentment.',
-      'A strong answer includes tension, your reasoning, how you handled people, what changed, and what you learned.',
-      'Do not avoid self-awareness questions. Answer them directly and calmly.',
-    ],
-    followUps: [
-      'What did you personally do to reduce that conflict, beyond being technically correct?',
-      'How do you know when to push harder versus when to align and move on?',
-      'If your interviewer challenged your strongest story, how would you defend it without sounding defensive?',
-    ],
-  },
-]
-</script>
